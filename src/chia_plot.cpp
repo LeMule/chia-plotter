@@ -57,6 +57,7 @@ phase4::output_t create_plot(	const int num_threads,
 								const std::string& tmp_dir,
 								const std::string& tmp_dir_2)
 {
+	const int k = 25;
 	const auto total_begin = get_wall_time_micros();
 
 	std::cout << "Process ID: " << GETPID() << std::endl;
@@ -104,7 +105,7 @@ phase4::output_t create_plot(	const int num_threads,
 		}
 		bls::Util::Hash256(params.id.data(), bytes.data(), bytes.size());
 	}
-	const std::string plot_name = "plot-k32-" + get_date_string_ex("%Y-%m-%d-%H-%M")
+	const std::string plot_name = "plot-k" + std::to_string(k) + "-" + get_date_string_ex("%Y-%m-%d-%H-%M")
 			+ "-" + bls::Util::HexStr(params.id.data(), params.id.size());
 	
 	std::cout << "Working Directory:   " << (tmp_dir.empty() ? "$PWD" : tmp_dir) << std::endl;
@@ -124,16 +125,16 @@ phase4::output_t create_plot(	const int num_threads,
 	params.plot_name = plot_name;
 	
 	phase1::output_t out_1;
-	phase1::compute(params, out_1, num_threads, log_num_buckets, plot_name, tmp_dir, tmp_dir_2);
+	phase1::compute(params, out_1, k, num_threads, log_num_buckets, plot_name, tmp_dir, tmp_dir_2);
 	
 	phase2::output_t out_2;
-	phase2::compute(out_1, out_2, num_threads, log_num_buckets, plot_name, tmp_dir, tmp_dir_2);
+	phase2::compute(out_1, out_2, k, num_threads, log_num_buckets, plot_name, tmp_dir, tmp_dir_2);
 	
 	phase3::output_t out_3;
-	phase3::compute(out_2, out_3, num_threads, log_num_buckets, plot_name, tmp_dir, tmp_dir_2);
+	phase3::compute(out_2, out_3, k, num_threads, log_num_buckets, plot_name, tmp_dir, tmp_dir_2);
 	
 	phase4::output_t out_4;
-	phase4::compute(out_3, out_4, num_threads, log_num_buckets, plot_name, tmp_dir, tmp_dir_2);
+	phase4::compute(out_3, out_4, k, num_threads, log_num_buckets, plot_name, tmp_dir, tmp_dir_2);
 	
 	std::cout << "Total plot creation time was "
 			<< (get_wall_time_micros() - total_begin) / 1e6 << " sec" << std::endl;

@@ -16,7 +16,7 @@
 
 
 // Unique plot id which will be used as a ChaCha8 key, and determines the PoSpace.
-const uint32_t kIdLen = 32;
+const uint32_t kIdLen = 25;
 
 // Extra bits of output from the f functions. Instead of being a function from k -> k bits,
 // it's a function from k -> k + kExtraBits bits. This allows less collisions in matches.
