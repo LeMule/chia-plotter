@@ -1,5 +1,14 @@
 # chia-plotter (pipelined multi-threaded)
 
+LeMule:
+This fork is meant to support the contract argument to create portable plots for pool
+testing. Further items of interest for me are:
+	- Adding support for different plot sizes.
+	- Continuing to support the tool as we move into an official pool protocol release.
+	- Suggestions?
+_________________________________________________________________________________________
+
+Original:
 This is a new implementation of a chia plotter which is designed as a processing pipeline,
 similar to how GPUs work, only the "cores" are normal software CPU threads.
 
@@ -27,6 +36,7 @@ Usage:
   -2, --tmpdir2 arg    Temporary directory 2, needs ~110 GiB [RAM] (default = <tmpdir>)
   -d, --finaldir arg   Final directory (default = <tmpdir>)
   -p, --poolkey arg    Pool Public Key (48 bytes)
+  -c, --contract arg   Pool Contract Key (32 bytes)
   -f, --farmerkey arg  Farmer Public Key (48 bytes)
       --help           Print help
 ```
