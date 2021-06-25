@@ -9,6 +9,7 @@
 #include <chia/phase2.hpp>
 #include <chia/phase3.hpp>
 #include <chia/phase4.hpp>
+#include <chia/bech32.hpp>
 #include <chia/util.hpp>
 #include <chia/copy.h>
 
@@ -52,12 +53,12 @@ inline
 phase4::output_t create_plot(	const int num_threads,
 								const int log_num_buckets,
 								const vector<uint8_t>& pool_key_bytes,
-								const vector<uint8_t>& pool_contract_key_bytes,
+								const std::string& pool_contract_str,
 								const vector<uint8_t>& farmer_key_bytes,
 								const std::string& tmp_dir,
 								const std::string& tmp_dir_2)
 {
-	const int k = 25;
+	const int k = 32;
 	const auto total_begin = get_wall_time_micros();
 
 	std::cout << "Process ID: " << GETPID() << std::endl;
@@ -65,15 +66,29 @@ phase4::output_t create_plot(	const int num_threads,
 	std::cout << "Number of Buckets: 2^" << log_num_buckets
 			<< " (" << (1 << log_num_buckets) << ")" << std::endl;
 	
-	const bls::G1Element pool_key = bls::G1Element::FromByteVector(pool_key_bytes);
-	const bls::Bytes pool_contract_key = bls::Bytes(pool_contract_key_bytes);
-	const bls::G1Element farmer_key = bls::G1Element::FromByteVector(farmer_key_bytes);
-	
-	if(pool_contract_key.size() == 0)
-		std::cout << "Pool Public Key: " << bls::Util::HexStr(pool_key.Serialize()) << std::endl;
-	else
-		std::cout << "Pool Contract Key: " << bls::Util::HexStr(pool_contract_key_bytes) << std::endl;
+	vector<uint8_t> bytes;
+	bech32::DecodeResult b32d_data;
 
+	if(pool_contract_str.size() == 0)
+	{
+		const bls::G1Element pool_key = bls::G1Element::FromByteVector(pool_key_bytes);
+		std::cout << "Pool Public Key: " << bls::Util::HexStr(pool_key.Serialize()) << std::endl;
+		bytes = pool_key.Serialize();
+	}
+	else
+	{
+		//decode_puzzle_hash
+		{
+			b32d_data = bech32::Decode(pool_contract_str);
+			if(b32d_data.encoding == bech32::Encoding::INVALID)
+				std::cout << "Invalid Pool Contract: " << pool_contract_str << std::endl;
+			
+			bytes = b32d_data.data;
+		}
+		std::cout << "Pool Contract Address: " << pool_contract_str << std::endl;
+	}
+
+	const bls::G1Element farmer_key = bls::G1Element::FromByteVector(farmer_key_bytes);
 	std::cout << "Farmer Public Key: " << bls::Util::HexStr(farmer_key.Serialize()) << std::endl;
 	
 	vector<uint8_t> seed(32);
@@ -91,18 +106,9 @@ phase4::output_t create_plot(	const int num_threads,
 	
 	phase1::input_t params;
 	{
-		vector<uint8_t> bytes = pool_key.Serialize();
-		//If we passed our pool contract key, use those bytes instead.
-		if(pool_contract_key.size() == 0)
-		{
-			const auto plot_bytes = plot_key.Serialize();
-			bytes.insert(bytes.end(), plot_bytes.begin(), plot_bytes.end());
-		}
-		else
-		{
-			const auto plot_bytes = plot_key.Serialize();
-			bytes.insert(bytes.end(), plot_bytes.begin(), plot_bytes.end());
-		}
+		const auto plot_bytes = plot_key.Serialize();
+		bytes.insert(bytes.end(), plot_bytes.begin(), plot_bytes.end());
+		
 		bls::Util::Hash256(params.id.data(), bytes.data(), bytes.size());
 	}
 	const std::string plot_name = "plot-k" + std::to_string(k) + "-" + get_date_string_ex("%Y-%m-%d-%H-%M")
@@ -112,10 +118,10 @@ phase4::output_t create_plot(	const int num_threads,
 	std::cout << "Working Directory 2: " << (tmp_dir_2.empty() ? "$PWD" : tmp_dir_2) << std::endl;
 	std::cout << "Plot Name: " << plot_name << std::endl;
 	
-	if(pool_contract_key_bytes.empty())
+	if(pool_contract_str.empty())
 		params.memo.insert(params.memo.end(), pool_key_bytes.begin(), pool_key_bytes.end());
 	else
-		params.memo.insert(params.memo.end(), pool_contract_key_bytes.begin(), pool_contract_key_bytes.end());
+		params.memo.insert(params.memo.end(), b32d_data.data.begin(), b32d_data.data.end());
 
 	params.memo.insert(params.memo.end(), farmer_key_bytes.begin(), farmer_key_bytes.end());
 	{
@@ -177,7 +183,7 @@ int main(int argc, char** argv)
 		"d, finaldir", "Final directory (default = <tmpdir>)", cxxopts::value<std::string>(final_dir))(
 		"key_input", " --Choose between poolkey and poolcontractkey. If both are input, latter is taken.")(
 		"p, poolkey", "Pool Public Key (48 bytes)", cxxopts::value<std::string>(pool_key_str))(
-		"c, poolcontractkey", "Pool Contract Key (32 bytes)", cxxopts::value<std::string>(pool_contract_key_str))(
+		"c, poolcontractaddr", "Pool Contract Address (32 bytes)", cxxopts::value<std::string>(pool_contract_key_str))(
 		"f, farmerkey", "Farmer Public Key (48 bytes)", cxxopts::value<std::string>(farmer_key_str))(
 		"help", "Print help");
 	
@@ -196,7 +202,7 @@ int main(int argc, char** argv)
 		return -2;
 	}
 	if(pool_key_str.empty() && pool_contract_key_str.empty()) {
-		std::cout << "Pool Contract Key (32 bytes) needs to be specified via -p <hex>, see `chia plotnft show`." << std::endl;
+		std::cout << "Pool Contract Address (32 bytes) needs to be specified via -p <hex>, see `chia plotnft show`." << std::endl;
 		return -2;
 	}
 	if(farmer_key_str.empty()) {
@@ -214,17 +220,16 @@ int main(int argc, char** argv)
 		final_dir = tmp_dir;
 	}
 	const auto pool_key = hex_to_bytes(pool_key_str);
-	const auto pool_contract_key = hex_to_bytes(pool_contract_key_str);
 	const auto farmer_key = hex_to_bytes(farmer_key_str);
 	const int log_num_buckets = num_buckets >= 16 ? int(log2(num_buckets)) : num_buckets;
 	
-	if(pool_contract_key.size() == 0 && pool_key.size() != bls::G1Element::SIZE) {
+	if(pool_contract_key_str.size() == 0 && pool_key.size() != bls::G1Element::SIZE) {
 		std::cout << "Invalid <poolkey>: " << bls::Util::HexStr(pool_key) << ", '" << pool_key_str
 			<< "' (needs to be " << bls::G1Element::SIZE << " bytes)" << std::endl;
 		return -2;
 	}
-	if(pool_key.size() != bls::G1Element::SIZE && pool_contract_key.size() == 0) {
-		std::cout << "Invalid <poolcontractkey>: " << bls::Util::HexStr(pool_contract_key) << ", '" << pool_contract_key_str
+	if(pool_key.size() != bls::G1Element::SIZE && pool_contract_key_str.size() == 0) {
+		std::cout << "Invalid <poolcontractaddr>: " << pool_contract_key_str
 			<< "' (needs to be 32 bytes)" << std::endl;
 		return -2;
 	}
@@ -345,7 +350,7 @@ int main(int argc, char** argv)
 			break;
 		}
 		std::cout << "Crafting plot " << i+1 << " out of " << num_plots << std::endl;
-		const auto out = create_plot(num_threads, log_num_buckets, pool_key, pool_contract_key, farmer_key, tmp_dir, tmp_dir2);
+		const auto out = create_plot(num_threads, log_num_buckets, pool_key, pool_contract_key_str, farmer_key, tmp_dir, tmp_dir2);
 		
 		if(final_dir != tmp_dir)
 		{
