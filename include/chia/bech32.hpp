@@ -44,6 +44,9 @@ struct DecodeResult
 /** Decode a Bech32 or Bech32m string. */
 DecodeResult Decode(const std::string& str);
 
+/**General power-of-2 base conversion.**/
+std::vector<uint8_t> ConvertBits(DecodeResult decodeData, uint32_t fromBits, uint32_t toBits, bool pad = true);
+
 } // namespace bech32
 
 /*LeMule: Embedding this here for now.*/
@@ -287,6 +290,38 @@ DecodeResult Decode(const std::string& str) {
     Encoding result = VerifyChecksum(hrp, values);
     if (result == Encoding::INVALID) return {};
     return {result, std::move(hrp), data(values.begin(), values.end() - 6)};
+}
+
+std::vector<uint8_t> ConvertBits(DecodeResult decodeData, uint32_t fromBits, uint32_t toBits, bool pad)
+{
+    int acc = 0;
+    int bits = 0;
+    std::vector<uint8_t> ret;
+    int maxv = (1 << toBits) - 1;
+    int max_acc = (1 << (fromBits + toBits -1)) - 1;
+    for(uint32_t i = 0; i < decodeData.data.size(); i++)
+    {
+        auto value = decodeData.data[i];
+        
+        if(value < 0 || (value >> fromBits))
+            std::cout << "Invalid Value" << std::endl;
+
+        acc = ((acc << fromBits) | value) & max_acc;
+        bits += fromBits;
+
+        while(bits >= toBits)
+        {
+            bits -= toBits;
+            ret.push_back((acc >> bits) & maxv);
+        }
+    }
+
+    if (pad && bits)
+        ret.push_back((acc << (toBits - bits)) & maxv);
+    else if (bits >= fromBits || (acc << (toBits - bits)) & maxv)
+        std::cout << "Invalid Bits";
+
+    return ret;
 }
 
 } // namespace bech32

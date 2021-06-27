@@ -67,6 +67,7 @@ phase4::output_t create_plot(	const int num_threads,
 			<< " (" << (1 << log_num_buckets) << ")" << std::endl;
 	
 	vector<uint8_t> bytes;
+	vector<uint8_t> puzzle_bytes;
 	bech32::DecodeResult b32d_data;
 
 	if(pool_contract_str.size() == 0)
@@ -81,9 +82,11 @@ phase4::output_t create_plot(	const int num_threads,
 		{
 			b32d_data = bech32::Decode(pool_contract_str);
 			if(b32d_data.encoding == bech32::Encoding::INVALID)
-				std::cout << "Invalid Pool Contract: " << pool_contract_str << std::endl;
-			
-			bytes = b32d_data.data;
+				std::cout << "Invalid Pool Contract Address: " << pool_contract_str << std::endl;
+
+			puzzle_bytes = bech32::ConvertBits(b32d_data, 5, 8, false);
+			for(int i = 0; i < puzzle_bytes.size(); i++)
+				bytes.push_back(static_cast<char>(puzzle_bytes[i]));
 		}
 		std::cout << "Pool Contract Address: " << pool_contract_str << std::endl;
 	}
@@ -121,12 +124,12 @@ phase4::output_t create_plot(	const int num_threads,
 	if(pool_contract_str.empty())
 		params.memo.insert(params.memo.end(), pool_key_bytes.begin(), pool_key_bytes.end());
 	else
-		params.memo.insert(params.memo.end(), b32d_data.data.begin(), b32d_data.data.end());
+		params.memo.insert(params.memo.end(), puzzle_bytes.begin(), puzzle_bytes.end());
 
 	params.memo.insert(params.memo.end(), farmer_key_bytes.begin(), farmer_key_bytes.end());
 	{
-		const auto bytes = master_sk.Serialize();
-		params.memo.insert(params.memo.end(), bytes.begin(), bytes.end());
+		const auto master_bytes = master_sk.Serialize();
+		params.memo.insert(params.memo.end(), master_bytes.begin(), master_bytes.end());
 	}
 	params.plot_name = plot_name;
 	
