@@ -450,7 +450,7 @@ uint64_t compute_table(	int R_index, int num_threads,
 
 inline
 void compute(	const input_t& input, output_t& out,
-				const int num_threads, const int log_num_buckets,
+				const int k, const int num_threads, const int log_num_buckets,
 				const std::string plot_name,
 				const std::string tmp_dir,
 				const std::string tmp_dir_2)

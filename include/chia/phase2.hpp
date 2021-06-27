@@ -40,7 +40,7 @@ void compute_table(	int R_index, int num_threads,
 					L_used->set(entry.pos);
 					L_used->set(uint64_t(entry.pos) + entry.off);
 				}
-			}, nullptr, num_threads * 2, "phase2/mark");
+			}, nullptr, num_threads, "phase2/mark");
 		
 		L_used->clear();
 		R_input.read(&pool, num_threads_read);
@@ -101,7 +101,7 @@ void compute_table(	int R_index, int num_threads,
 				tmp.off = pos_off.second;
 				out.push_back(tmp);
 			}
-		}, &R_count, num_threads * 2, "phase2/remap");
+		}, &R_count, num_threads, "phase2/remap");
 	
 	R_input.read(&map_pool, num_threads_read);
 	
@@ -124,7 +124,7 @@ void compute_table(	int R_index, int num_threads,
 
 inline
 void compute(	const phase1::output_t& input, output_t& out,
-				const int num_threads, const int log_num_buckets,
+				const int k, const int num_threads, const int log_num_buckets,
 				const std::string plot_name,
 				const std::string tmp_dir,
 				const std::string tmp_dir_2)

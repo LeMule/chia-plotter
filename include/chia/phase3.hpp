@@ -471,7 +471,7 @@ uint64_t compute_stage2(int L_index, int num_threads,
 
 inline
 void compute(	phase2::output_t& input, output_t& out,
-				const int num_threads, const int log_num_buckets,
+				const int k, const int num_threads, const int log_num_buckets,
 				const std::string plot_name,
 				const std::string tmp_dir,
 				const std::string tmp_dir_2)
