@@ -105,8 +105,16 @@ phase4::output_t create_plot(	const int num_threads,
 		local_sk = MPL.DeriveChildSk(local_sk, i);
 	}
 	const bls::G1Element local_key = local_sk.GetG1Element();
-	const bls::G1Element plot_key = local_key + farmer_key;
+
+	vector<uint8_t> local_pk_bytes = local_key.Serialize();
 	
+	/*This section still under construction*/
+	bls::G1Element taprootseed = (local_key + farmer_key) + local_key + farmer_key;
+	vector<uint8_t> trs_bytes = taprootseed.Serialize();	
+	bls::PrivateKey taproot_key = MPL.KeyGen(trs_bytes);
+	const bls::G1Element plot_key = local_key + farmer_key + taproot_key.GetG1Element();
+	/*End section*/
+
 	phase1::input_t params;
 	{
 		const auto plot_bytes = plot_key.Serialize();
